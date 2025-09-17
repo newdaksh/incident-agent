@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Frontend for IncidentAgent - React + TypeScript + Tailwind",
   "type": "module",
+  "proxy": "http://localhost:5000",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

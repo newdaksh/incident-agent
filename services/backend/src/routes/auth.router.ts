@@ -5,6 +5,7 @@ import User from "../models/user.model";
 import AuditLog from "../models/audit.model";
 import { asyncHandler, createError } from "../middlewares/error.middleware";
 import { authMiddleware } from "../middlewares/auth.middleware";
+import { requireRole } from "../middlewares/rbac.middleware";
 import { logger } from "../utils/logger";
 
 const router = express.Router();
@@ -124,6 +125,7 @@ router.post(
 router.get(
   "/me",
   authMiddleware,
+  requireRole("viewer", "responder", "admin"),
   asyncHandler(async (req, res) => {
     const user = req.user;
 
@@ -146,6 +148,7 @@ router.get(
 router.put(
   "/me",
   authMiddleware,
+  requireRole("viewer", "responder", "admin"),
   asyncHandler(async (req, res) => {
     const userId = req.user._id;
     const { name, timezone, preferences } = req.body;
@@ -188,6 +191,7 @@ router.put(
 router.put(
   "/password",
   authMiddleware,
+  requireRole("viewer", "responder", "admin"),
   asyncHandler(async (req, res) => {
     const { currentPassword, newPassword } = req.body;
     const userId = req.user._id;
@@ -223,6 +227,7 @@ router.put(
 router.post(
   "/logout",
   authMiddleware,
+  requireRole("viewer", "responder", "admin"),
   asyncHandler(async (req, res) => {
     // Log user logout
     await (AuditLog as any).createEntry(
