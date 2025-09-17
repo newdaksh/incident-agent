@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "incident-agent-genai"
+version = "0.1.0"
+description = "GenAI microservice for IncidentAgent (FastAPI)"
+authors = [{name = "IncidentAgent Team"}]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "fastapi~=0.110",
+  "uvicorn[standard]~=0.27",
+  "pydantic~=2.8",
+  "requests~=2.32",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "httpx", "ruff"]
+
+[tool.uvicorn]
+factory = false
+host = "0.0.0.0"
+port = 8000
+log_level = "info"

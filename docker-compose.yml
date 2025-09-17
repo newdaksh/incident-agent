@@ -1,0 +1,162 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: incident-agent-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: incident-agent
+    ports:
+      - "${DOCKER_MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/seed:/docker-entrypoint-initdb.d
+    networks:
+      - incident-agent-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: incident-agent-redis
+    restart: unless-stopped
+    ports:
+      - "${DOCKER_REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - incident-agent-network
+
+  # n8n Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: incident-agent-n8n
+    restart: unless-stopped
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin123
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=UTC
+    ports:
+      - "${DOCKER_N8N_PORT:-5678}:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./n8n-workflows:/import
+    networks:
+      - incident-agent-network
+    depends_on:
+      - mongodb
+      - redis
+
+  # Backend API Service
+  backend:
+    build: ./services/backend
+    container_name: incident-agent-backend
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - MONGO_URI=mongodb://mongodb:27017/incident-agent
+      - REDIS_URL=redis://redis:6379
+      - GENAI_SERVICE_URL=http://genai-service:8000
+      - N8N_WEBHOOK_URL=http://n8n:5678/webhook
+      - FRONTEND_URL=http://localhost:3000
+    ports:
+      - "${DOCKER_BACKEND_PORT:-5000}:5000"
+    volumes:
+      - ./services/backend:/app
+      - /app/node_modules
+    networks:
+      - incident-agent-network
+    depends_on:
+      - mongodb
+      - redis
+      - genai-service
+    develop:
+      watch:
+        - action: sync
+          path: ./services/backend/src
+          target: /app/src
+        - action: rebuild
+          path: ./services/backend/package.json
+
+  # Frontend React App
+  frontend:
+    build: ./services/frontend
+    container_name: incident-agent-frontend
+    restart: unless-stopped
+    environment:
+      - VITE_API_URL=http://localhost:5000
+      - VITE_SOCKET_URL=http://localhost:5000
+    ports:
+      - "${DOCKER_FRONTEND_PORT:-3000}:3000"
+    volumes:
+      - ./services/frontend:/app
+      - /app/node_modules
+    networks:
+      - incident-agent-network
+    depends_on:
+      - backend
+    develop:
+      watch:
+        - action: sync
+          path: ./services/frontend/src
+          target: /app/src
+        - action: rebuild
+          path: ./services/frontend/package.json
+
+  # GenAI FastAPI Service
+  genai-service:
+    build: ./services/genai-service
+    container_name: incident-agent-genai
+    restart: unless-stopped
+    environment:
+      - OPENAI_API_KEY=${GENAI_API_KEY}
+      - GENAI_MODEL=${GENAI_MODEL:-gpt-4}
+      - GENAI_MAX_TOKENS=${GENAI_MAX_TOKENS:-2000}
+      - GENAI_TEMPERATURE=${GENAI_TEMPERATURE:-0.7}
+    ports:
+      - "${DOCKER_GENAI_PORT:-8000}:8000"
+    volumes:
+      - ./services/genai-service:/app
+    networks:
+      - incident-agent-network
+    develop:
+      watch:
+        - action: sync
+          path: ./services/genai-service/app
+          target: /app/app
+
+  # Nginx Reverse Proxy (optional for production)
+  nginx:
+    image: nginx:alpine
+    container_name: incident-agent-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./infra/certs:/etc/nginx/certs
+    networks:
+      - incident-agent-network
+    depends_on:
+      - frontend
+      - backend
+    profiles:
+      - production
+
+volumes:
+  mongodb_data:
+  redis_data:
+  n8n_data:
+
+
+networks:
+  incident-agent-network:
+    driver: bridge
