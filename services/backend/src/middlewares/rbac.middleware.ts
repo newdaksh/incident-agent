@@ -1,6 +1,9 @@
 import { Response, NextFunction } from "express";
 import { logger } from "../utils/logger";
-import { AuthRequest } from "../types/auth.types";
+import { authMiddleware, AuthRequest } from "./auth.middleware";
+
+// Re-export authMiddleware as requireAuth for convenience
+export const requireAuth = authMiddleware;
 
 export const requireRole = (...allowedRoles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -45,6 +48,27 @@ export const canManageIncidents = (
   if (!allowedRoles.includes(req.user.role)) {
     return res.status(403).json({
       error: "Only responders and admins can manage incidents",
+    });
+  }
+
+  next();
+};
+
+export const canManageRunbooks = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!req.user) {
+    return res.status(401).json({
+      error: "Authentication required",
+    });
+  }
+
+  const allowedRoles = ["admin", "manager", "responder"];
+  if (!allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({
+      error: "Only admins, managers, and responders can manage runbooks",
     });
   }
 

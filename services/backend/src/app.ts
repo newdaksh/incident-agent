@@ -16,6 +16,11 @@ import incidentsRouter from "./routes/incidents.router";
 import authRouter from "./routes/auth.router";
 import webhooksRouter from "./routes/webhooks.router";
 import healthRouter from "./routes/health.router";
+import analyticsRouter from "./routes/analytics.router";
+import runbooksRouter from "./routes/runbooks.router";
+import usersRouter from "./routes/users.router";
+import rcaRouter from "./routes/rca.router";
+import adminAuthRouter from "./routes/admin-auth.router";
 import { setupSocket } from "./sockets/socket";
 
 const app = express();
@@ -128,9 +133,14 @@ app.use("/api", apiLimiter);
 
 // Authentication routes
 app.use("/api/auth", authRouter);
+app.use("/api/admin", adminAuthRouter);
 
 // Protected API routes
 app.use("/api/incidents", authMiddleware, incidentsRouter);
+app.use("/api/analytics", authMiddleware, analyticsRouter);
+app.use("/api/runbooks", authMiddleware, runbooksRouter);
+app.use("/api/users", authMiddleware, usersRouter);
+app.use("/api/rca", authMiddleware, rcaRouter);
 
 // Socket.IO availability for routes
 app.use((req: Request, res: Response, next: NextFunction) => {

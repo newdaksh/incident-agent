@@ -111,6 +111,40 @@ export interface IIncident {
   // Metrics and analytics
   metrics: IncidentMetrics;
 
+  // SLA tracking
+  sla?: {
+    policy: string;
+    responseTarget: number;
+    resolutionTarget: number;
+    breached: boolean;
+    breachType?: "response" | "resolution";
+    escalationLevel: number;
+  };
+
+  // RCA (Root Cause Analysis)
+  rca?: {
+    summary: string;
+    timeline: string;
+    rootCause: string;
+    impact: string;
+    contributingFactors: string[];
+    preventionMeasures: string[];
+    generatedBy: "user" | "bot";
+    generatedAt: Date;
+    status: "draft" | "approved" | "published";
+    approvedBy?: string;
+    approvedAt?: Date;
+  };
+
+  // Escalation history
+  escalationHistory: {
+    level: number;
+    escalatedTo: string;
+    escalatedBy: string;
+    escalatedAt: Date;
+    reason: string;
+  }[];
+
   // Attachments and evidence
   attachments: string[];
 
@@ -127,7 +161,12 @@ export interface IUser {
   _id?: string;
   name: string;
   email: string;
-  role: "viewer" | "responder" | "admin";
+  password?: string;
+  role: "viewer" | "responder" | "admin" | "manager";
+  permissions: string[];
+  department?: string;
+  teams: string[];
+  skillTags: string[];
   onCall: boolean;
   timezone: string;
   authProvider: "local" | "azure" | "okta";
@@ -154,7 +193,9 @@ export interface IRunbook {
   serviceTags: string[];
   category: string;
   version: string;
+  currentVersion: string;
   isActive: boolean;
+  approvalStatus: "draft" | "pending" | "approved" | "rejected" | "deprecated";
   steps: {
     id: string;
     order: number;
@@ -165,6 +206,30 @@ export interface IRunbook {
     estimatedDuration: number; // in minutes
     command?: string;
     validation?: string;
+  }[];
+  versionHistory: {
+    version: string;
+    changes: string;
+    author: string;
+    createdAt: Date;
+  }[];
+  usageStats: {
+    totalExecutions: number;
+    successfulExecutions: number;
+    lastUsed: Date;
+    avgExecutionTime: number;
+    userFeedback: {
+      userId: string;
+      rating: number;
+      comment: string;
+      createdAt: Date;
+    }[];
+  };
+  approvalHistory: {
+    status: "approved" | "rejected";
+    approvedBy: string;
+    comment: string;
+    createdAt: Date;
   }[];
   metadata: {
     author: string;

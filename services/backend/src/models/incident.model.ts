@@ -245,6 +245,81 @@ const IncidentSchema = new Schema<IncidentDocument>(
       },
     },
 
+    // SLA tracking
+    sla: {
+      policyId: {
+        type: Schema.Types.ObjectId,
+        ref: "SLAPolicy",
+      },
+      acknowledgmentDeadline: Date,
+      resolutionDeadline: Date,
+      breached: {
+        type: Boolean,
+        default: false,
+      },
+      breachType: {
+        type: String,
+        enum: ["acknowledgment", "resolution", "both"],
+      },
+      escalationLevel: {
+        type: Number,
+        default: 0,
+      },
+      timeToAcknowledgment: Number, // in minutes
+      timeToResolution: Number, // in minutes
+    },
+
+    // RCA (Root Cause Analysis)
+    rca: {
+      summary: String,
+      timeline: String,
+      rootCause: String,
+      impact: String,
+      contributingFactors: [String],
+      preventionMeasures: [String],
+      generatedBy: {
+        type: String,
+        enum: ["user", "bot"],
+      },
+      generatedAt: Date,
+      approvedBy: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+      approvedAt: Date,
+      status: {
+        type: String,
+        enum: ["draft", "pending", "approved", "published"],
+        default: "draft",
+      },
+    },
+
+    // Enhanced tracking
+    tags: [
+      {
+        type: String,
+        trim: true,
+        lowercase: true,
+      },
+    ],
+    watchers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    escalationHistory: [
+      {
+        level: Number,
+        escalatedAt: Date,
+        escalatedBy: {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+        },
+        reason: String,
+      },
+    ],
+
     // Remediation
     remediations: [RemediationStepSchema],
     runbookId: {

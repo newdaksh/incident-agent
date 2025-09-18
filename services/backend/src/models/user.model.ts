@@ -1,10 +1,15 @@
 // @ts-nocheck
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, Model } from "mongoose";
 import { IUser } from "../types";
 import bcrypt from "bcryptjs";
 
 interface UserDocument extends IUser, Document {
   comparePassword(candidatePassword: string): Promise<boolean>;
+}
+
+interface UserModel extends mongoose.Model<UserDocument> {
+  findOnCall(): mongoose.Query<UserDocument[], UserDocument>;
+  findByRole(role: string): mongoose.Query<UserDocument[], UserDocument>;
 }
 
 const UserSchema = new Schema<UserDocument>(
@@ -33,9 +38,52 @@ const UserSchema = new Schema<UserDocument>(
     },
     role: {
       type: String,
-      enum: ["viewer", "responder", "admin"],
+      enum: ["viewer", "responder", "admin", "manager"],
       default: "viewer",
     },
+    permissions: [
+      {
+        type: String,
+        enum: [
+          "incidents.read",
+          "incidents.create",
+          "incidents.update",
+          "incidents.delete",
+          "runbooks.read",
+          "runbooks.create",
+          "runbooks.update",
+          "runbooks.delete",
+          "runbooks.approve",
+          "users.read",
+          "users.create",
+          "users.update",
+          "users.delete",
+          "analytics.read",
+          "analytics.export",
+          "integrations.manage",
+          "sla.manage",
+          "chatbot.interact",
+          "rca.generate",
+        ],
+      },
+    ],
+    department: {
+      type: String,
+      trim: true,
+    },
+    teams: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    skillTags: [
+      {
+        type: String,
+        trim: true,
+        lowercase: true,
+      },
+    ],
     onCall: {
       type: Boolean,
       default: false,
@@ -134,7 +182,7 @@ UserSchema.virtual("displayName").get(function () {
   return `${this.name} (${this.email})`;
 });
 
-const User = mongoose.model<UserDocument>("User", UserSchema);
+const User = mongoose.model<UserDocument, UserModel>("User", UserSchema);
 
 export default User;
 export { UserDocument };

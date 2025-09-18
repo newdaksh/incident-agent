@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model";
+import Admin from "../models/admin.model";
 import { logger } from "../utils/logger";
 
-interface AuthRequest extends Request {
+export interface AuthRequest extends Request {
   user?: any;
 }
 
@@ -31,15 +32,19 @@ export const authMiddleware = async (
 
     const decoded = jwt.verify(token, jwtSecret) as any;
 
-    // Get user from database
-    const user = await User.findById(decoded.id).select("-password");
-    if (!user) {
-      return res.status(401).json({
-        error: "Token is not valid. User not found.",
-      });
+    // Get principal from database - check both User and Admin collections
+    let principal: any = await User.findById(decoded.id).select("-password");
+    if (!principal) {
+      const admin = await Admin.findById(decoded.id).select("-password");
+      if (!admin || !admin.isActive) {
+        return res.status(401).json({
+          error: "Token is not valid. User/Admin not found or inactive.",
+        });
+      }
+      principal = admin;
     }
 
-    req.user = user;
+    req.user = principal;
     next();
   } catch (error) {
     logger.error("Auth middleware error:", error);
@@ -61,13 +66,20 @@ export const optionalAuthMiddleware = async (
       const jwtSecret = process.env.JWT_SECRET;
       if (jwtSecret) {
         const decoded = jwt.verify(token, jwtSecret) as any;
-        const user = await User.findById(decoded.id).select("-password");
-        if (user) {
-          req.user = user;
+        let principal: any = await User.findById(decoded.id).select(
+          "-password"
+        );
+        if (!principal) {
+          const admin = await Admin.findById(decoded.id).select("-password");
+          if (admin && admin.isActive) {
+            principal = admin;
+          }
+        }
+        if (principal) {
+          req.user = principal;
         }
       }
     }
-
     next();
   } catch (error) {
     // Continue without authentication for optional auth

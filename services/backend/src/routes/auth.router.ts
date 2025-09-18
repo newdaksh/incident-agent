@@ -16,25 +16,50 @@ router.post(
   asyncHandler(async (req, res) => {
     const { name, email, password, role = "viewer" } = req.body;
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      throw createError("User already exists", 400);
+    // Check if user/admin exists
+    const Admin = require("../models/admin.model").default;
+    let existing;
+    if (role === "admin") {
+      existing = await Admin.findOne({ email });
+    } else {
+      existing = await User.findOne({ email });
+    }
+    if (existing) {
+      throw createError(
+        role === "admin" ? "Admin already exists" : "User already exists",
+        400
+      );
     }
 
-    // Create user
-    const user = new User({
-      name,
-      email,
-      password,
-      role,
-      authProvider: "local",
-    });
+    let savedDoc, tokenPayload;
+    if (role === "admin") {
+      // Create admin
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const admin = new Admin({
+        name,
+        email,
+        password: hashedPassword,
+        role,
+        permissions: [],
+        isActive: true,
+      });
+      await admin.save();
+      savedDoc = admin;
+      tokenPayload = { id: admin._id, email: admin.email, role: admin.role };
+    } else {
+      // Create user
+      const user = new User({
+        name,
+        email,
+        password,
+        role,
+        authProvider: "local",
+      });
+      await user.save();
+      savedDoc = user;
+      tokenPayload = { id: user._id, email: user.email, role: user.role };
+    }
 
-    await user.save();
-
-    // Generate JWT token
-    const tokenPayload = { id: user._id, email: user.email, role: user.role };
     const jwtSecret = process.env.JWT_SECRET as string;
     const signOptions: jwt.SignOptions = {
       expiresIn: (process.env.JWT_EXPIRES_IN as any) || "24h",
@@ -42,25 +67,27 @@ router.post(
     // @ts-ignore
     const token = jwt.sign(tokenPayload, jwtSecret, signOptions);
 
-    // Log user registration
+    // Log registration
     await (AuditLog as any).createEntry(
-      user._id.toString(),
-      "user_registered",
-      "user",
+      savedDoc._id.toString(),
+      role === "admin" ? "admin_registered" : "user_registered",
+      role,
       { email, role, authProvider: "local" },
       { ipAddress: req.ip, userAgent: req.get("User-Agent") }
     );
 
-    logger.info(`New user registered: ${email}`);
+    logger.info(`New ${role} registered: ${email}`);
 
     res.status(201).json({
-      message: "User registered successfully",
+      message: `${
+        role.charAt(0).toUpperCase() + role.slice(1)
+      } registered successfully`,
       token,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+        id: savedDoc._id,
+        name: savedDoc.name,
+        email: savedDoc.email,
+        role: savedDoc.role,
       },
     });
   })
@@ -76,18 +103,45 @@ router.post(
       throw createError("Please provide email and password", 400);
     }
 
-    // Find user and include password
-    const user = await User.findOne({ email }).select("+password");
-    if (!user || !(await user.comparePassword(password))) {
+    // Check both User and Admin collections
+    const Admin = require("../models/admin.model").default;
+    let loginUser: any = null;
+    let isAdmin = false;
+
+    // Check in Admin collection FIRST to avoid duplicate email confusion
+    const admin = await Admin.findOne({ email }).select("+password");
+    if (
+      admin &&
+      admin.isActive &&
+      (await bcrypt.compare(password, admin.password))
+    ) {
+      loginUser = admin;
+      isAdmin = true;
+    } else {
+      // Then check in User collection
+      const user = await User.findOne({ email }).select("+password");
+      if (user && (await user.comparePassword(password))) {
+        loginUser = user;
+        isAdmin = false;
+      }
+    }
+
+    if (!loginUser) {
       throw createError("Invalid credentials", 401);
     }
 
-    // Update last login
-    user.lastLoginAt = new Date();
-    await user.save();
+    // Update last login for users (admins don't have this field by default)
+    if (!isAdmin && loginUser.lastLoginAt !== undefined) {
+      loginUser.lastLoginAt = new Date();
+      await loginUser.save();
+    }
 
     // Generate JWT token
-    const tokenPayload2 = { id: user._id, email: user.email, role: user.role };
+    const tokenPayload2 = {
+      id: loginUser._id,
+      email: loginUser.email,
+      role: loginUser.role,
+    };
     const jwtSecret2 = process.env.JWT_SECRET as string;
     const signOptions2: jwt.SignOptions = {
       expiresIn: (process.env.JWT_EXPIRES_IN as any) || "24h",
@@ -95,28 +149,38 @@ router.post(
     // @ts-ignore
     const token = jwt.sign(tokenPayload2, jwtSecret2, signOptions2);
 
-    // Log user login
+    // Log login
     await (AuditLog as any).createEntry(
-      user._id.toString(),
-      "user_login",
-      "user",
+      loginUser._id.toString(),
+      isAdmin ? "admin_login" : "user_login",
+      loginUser.role,
       { email, loginMethod: "local" },
       { ipAddress: req.ip, userAgent: req.get("User-Agent") }
     );
 
-    logger.info(`User logged in: ${email}`);
+    logger.info(`${isAdmin ? "Admin" : "User"} logged in: ${email}`);
+
+    const responseUser: any = {
+      id: loginUser._id,
+      name: loginUser.name,
+      email: loginUser.email,
+      role: loginUser.role,
+    };
+
+    // Add user-specific fields if not admin
+    if (!isAdmin) {
+      responseUser.onCall = loginUser.onCall;
+      responseUser.preferences = loginUser.preferences;
+    } else {
+      responseUser.permissions = loginUser.permissions;
+      responseUser.isActive = loginUser.isActive;
+    }
 
     res.json({
       message: "Login successful",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        onCall: user.onCall,
-        preferences: user.preferences,
-      },
+      user: responseUser,
+      isAdmin: isAdmin,
     });
   })
 );

@@ -27,10 +27,16 @@ const LoginRegister: React.FC = () => {
       if (!res.ok) throw new Error(data.error || data.message);
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      if (data.user.role === "admin") {
-        navigate("/admin");
+      // Trigger an immediate app state refresh so App.tsx picks up the role
+      window.dispatchEvent(new Event("storage"));
+
+      // Check if user is admin based on role or isAdmin flag
+      const isAdminUser = data.isAdmin || data.user.role === "admin";
+
+      if (isAdminUser) {
+        navigate("/admin/dashboard");
       } else {
-        navigate("/user");
+        navigate("/user/dashboard");
       }
     } catch (err: any) {
       setError(err.message);
@@ -72,7 +78,10 @@ const LoginRegister: React.FC = () => {
           />
           {!isLogin && (
             <>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+              <label
+                htmlFor="role"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
                 Select Role
               </label>
               <select

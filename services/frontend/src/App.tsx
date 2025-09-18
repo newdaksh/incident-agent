@@ -1,10 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Routes, Route, Link, useNavigate } from "react-router-dom";
-import Dashboard from "./pages/Dashboard.tsx";
-import IncidentDetail from "./pages/IncidentDetail.tsx";
-import Runbooks from "./pages/Runbooks.tsx";
-import Admin from "./pages/Admin.tsx";
-import UserDashboard from "./pages/UserDashboard.tsx";
+import { useState, useEffect } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import LoginRegister from "./pages/LoginRegister.tsx";
 import UserLayout from "./pages/UserLayout.tsx";
@@ -19,6 +14,12 @@ function App() {
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+    const onStorage = () => {
+      const updated = localStorage.getItem("user");
+      setUser(updated ? JSON.parse(updated) : null);
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   // Route protection

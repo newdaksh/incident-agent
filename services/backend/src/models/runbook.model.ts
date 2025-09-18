@@ -83,6 +83,82 @@ const RunbookSchema = new Schema<RunbookDocument>(
       type: Boolean,
       default: true,
     },
+
+    // Version control
+    currentVersion: {
+      type: String,
+      default: "1.0.0",
+    },
+    versionHistory: [
+      {
+        version: String,
+        changes: String,
+        author: {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+
+    // Usage tracking
+    usageStats: {
+      totalExecutions: {
+        type: Number,
+        default: 0,
+      },
+      successfulExecutions: {
+        type: Number,
+        default: 0,
+      },
+      lastUsed: Date,
+      avgExecutionTime: {
+        type: Number,
+        default: 0,
+      },
+      userFeedback: [
+        {
+          userId: {
+            type: Schema.Types.ObjectId,
+            ref: "User",
+          },
+          rating: {
+            type: Number,
+            min: 1,
+            max: 5,
+          },
+          comment: String,
+          createdAt: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+    },
+
+    // Enhanced metadata
+    approvalStatus: {
+      type: String,
+      enum: ["draft", "pending", "approved", "deprecated"],
+      default: "draft",
+    },
+    approvalHistory: [
+      {
+        status: String,
+        approvedBy: {
+          type: Schema.Types.ObjectId,
+          ref: "User",
+        },
+        comment: String,
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     steps: [RunbookStepSchema],
     metadata: {
       author: {
