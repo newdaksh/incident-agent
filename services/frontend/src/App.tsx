@@ -10,16 +10,39 @@ function App() {
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+    // Check both admin and user session keys
+    const adminUser = localStorage.getItem("admin_user");
+    const userUser = localStorage.getItem("user_user");
+    if (adminUser) {
+      setUser({ ...JSON.parse(adminUser), _sessionType: "admin" });
+    } else if (userUser) {
+      setUser({ ...JSON.parse(userUser), _sessionType: "user" });
+    } else {
+      setUser(null);
     }
-    const onStorage = () => {
-      const updated = localStorage.getItem("user");
-      setUser(updated ? JSON.parse(updated) : null);
+    // Listen for both admin and user storage events
+    const onAdminStorage = () => {
+      const adminUser = localStorage.getItem("admin_user");
+      if (adminUser) {
+        setUser({ ...JSON.parse(adminUser), _sessionType: "admin" });
+      } else {
+        setUser(null);
+      }
     };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    const onUserStorage = () => {
+      const userUser = localStorage.getItem("user_user");
+      if (userUser) {
+        setUser({ ...JSON.parse(userUser), _sessionType: "user" });
+      } else {
+        setUser(null);
+      }
+    };
+    window.addEventListener("admin_storage", onAdminStorage);
+    window.addEventListener("user_storage", onUserStorage);
+    return () => {
+      window.removeEventListener("admin_storage", onAdminStorage);
+      window.removeEventListener("user_storage", onUserStorage);
+    };
   }, []);
 
   // Route protection
@@ -34,10 +57,10 @@ function App() {
       <Toaster position="top-right" />
       <Routes>
         <Route path="/login" element={<LoginRegister />} />
-        {user && user.role === "admin" && (
+        {user && user._sessionType === "admin" && (
           <Route path="/*" element={<AdminLayout />} />
         )}
-        {user && user.role !== "admin" && (
+        {user && user._sessionType === "user" && (
           <Route path="/*" element={<UserLayout />} />
         )}
       </Routes>

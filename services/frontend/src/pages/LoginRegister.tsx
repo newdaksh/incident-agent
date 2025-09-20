@@ -25,17 +25,18 @@ const LoginRegister: React.FC = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.message);
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      // Trigger an immediate app state refresh so App.tsx picks up the role
-      window.dispatchEvent(new Event("storage"));
-
       // Check if user is admin based on role or isAdmin flag
       const isAdminUser = data.isAdmin || data.user.role === "admin";
 
       if (isAdminUser) {
+        localStorage.setItem("admin_token", data.token);
+        localStorage.setItem("admin_user", JSON.stringify(data.user));
+        window.dispatchEvent(new Event("admin_storage"));
         navigate("/admin/dashboard");
       } else {
+        localStorage.setItem("user_token", data.token);
+        localStorage.setItem("user_user", JSON.stringify(data.user));
+        window.dispatchEvent(new Event("user_storage"));
         navigate("/user/dashboard");
       }
     } catch (err: any) {

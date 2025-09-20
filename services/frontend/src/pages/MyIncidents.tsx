@@ -1,17 +1,7 @@
+// ...existing code...
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import {
-  PlusIcon,
-  FunnelIcon,
-  MagnifyingGlassIcon,
-  EyeIcon,
-  PencilIcon,
-  TrashIcon,
-  ClockIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
-  ChatBubbleLeftIcon,
-} from "@heroicons/react/24/outline";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 interface Incident {
   _id: string;
@@ -24,107 +14,58 @@ interface Incident {
   reporter: string;
   createdAt: string;
   updatedAt: string;
-  sla?: {
-    breached: boolean;
-    resolutionDeadline: string;
-  };
-  botAnalysis?: {
-    confidence: number;
-    recommendations: string[];
-  };
 }
 
 function MyIncidents() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [severityFilter, setSeverityFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("createdAt");
-  const [sortOrder, setSortOrder] = useState("desc");
-  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
-    fetchIncidents();
+    // Only show incidents reported by the user
+    const mockIncidents: Incident[] = [
+      {
+        _id: "1",
+        title: "Login issue on mobile app",
+        description: "Unable to login from mobile device",
+        service: "mobile-app",
+        severity: "medium",
+        status: "open",
+        assignee: "admin",
+        reporter: "current-user",
+        createdAt: "2025-01-17T10:30:00Z",
+        updatedAt: "2025-01-17T11:00:00Z",
+      },
+      {
+        _id: "2",
+        title: "Notification not received",
+        description: "Did not receive notification for incident update",
+        service: "notification-service",
+        severity: "low",
+        status: "resolved",
+        assignee: "admin",
+        reporter: "current-user",
+        createdAt: "2025-01-16T09:15:00Z",
+        updatedAt: "2025-01-16T10:00:00Z",
+      },
+      {
+        _id: "3",
+        title: "Profile update failed",
+        description: "Error when updating profile information",
+        service: "user-profile",
+        severity: "high",
+        status: "investigating",
+        assignee: "admin",
+        reporter: "current-user",
+        createdAt: "2025-01-15T08:00:00Z",
+        updatedAt: "2025-01-15T08:45:00Z",
+      },
+    ];
+    setIncidents(mockIncidents);
   }, []);
 
   useEffect(() => {
-    filterAndSortIncidents();
-  }, [incidents, searchTerm, statusFilter, severityFilter, sortBy, sortOrder]);
-
-  const fetchIncidents = async () => {
-    try {
-      setLoading(true);
-      // Mock data - replace with actual API call
-      const mockIncidents: Incident[] = [
-        {
-          _id: "1",
-          title: "API latency spike in payment service",
-          description:
-            "Users experiencing slow response times when processing payments",
-          service: "payment-api",
-          severity: "high",
-          status: "investigating",
-          assignee: "current-user",
-          reporter: "current-user",
-          createdAt: "2025-01-17T10:30:00Z",
-          updatedAt: "2025-01-17T11:00:00Z",
-          sla: {
-            breached: false,
-            resolutionDeadline: "2025-01-17T14:30:00Z",
-          },
-          botAnalysis: {
-            confidence: 0.85,
-            recommendations: [
-              "Check database connection pool",
-              "Review recent deployments",
-            ],
-          },
-        },
-        {
-          _id: "2",
-          title: "Database connection timeout errors",
-          description:
-            "Multiple connection timeout errors reported in user database",
-          service: "user-db",
-          severity: "critical",
-          status: "open",
-          assignee: "current-user",
-          reporter: "john.doe",
-          createdAt: "2025-01-17T09:15:00Z",
-          updatedAt: "2025-01-17T09:15:00Z",
-          sla: {
-            breached: true,
-            resolutionDeadline: "2025-01-17T10:15:00Z",
-          },
-        },
-        {
-          _id: "3",
-          title: "Frontend build pipeline failures",
-          description: "CI/CD pipeline failing on frontend builds",
-          service: "webapp",
-          severity: "medium",
-          status: "resolved",
-          assignee: "current-user",
-          reporter: "current-user",
-          createdAt: "2025-01-17T08:00:00Z",
-          updatedAt: "2025-01-17T08:45:00Z",
-        },
-      ];
-
-      setIncidents(mockIncidents);
-    } catch (error) {
-      console.error("Failed to fetch incidents:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterAndSortIncidents = () => {
     let filtered = [...incidents];
-
-    // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter(
         (incident) =>
@@ -135,344 +76,106 @@ function MyIncidents() {
           incident.service.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
-    // Apply status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter(
-        (incident) => incident.status === statusFilter
-      );
-    }
-
-    // Apply severity filter
-    if (severityFilter !== "all") {
-      filtered = filtered.filter(
-        (incident) => incident.severity === severityFilter
-      );
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      if (sortBy === "createdAt" || sortBy === "updatedAt") {
-        const aValue = new Date(a[sortBy]).getTime();
-        const bValue = new Date(b[sortBy]).getTime();
-        return sortOrder === "asc" ? aValue - bValue : bValue - aValue;
-      }
-
-      const aValue = a[sortBy as keyof Incident] as string;
-      const bValue = b[sortBy as keyof Incident] as string;
-
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return sortOrder === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-
-      return 0;
-    });
-
     setFilteredIncidents(filtered);
-  };
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "critical":
-        return "bg-red-100 text-red-800 border-red-200";
-      case "high":
-        return "bg-orange-100 text-orange-800 border-orange-200";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "low":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "open":
-        return <ExclamationTriangleIcon className="h-4 w-4 text-red-500" />;
-      case "investigating":
-        return <ClockIcon className="h-4 w-4 text-yellow-500" />;
-      case "resolved":
-        return <CheckCircleIcon className="h-4 w-4 text-green-500" />;
-      case "closed":
-        return <CheckCircleIcon className="h-4 w-4 text-gray-500" />;
-      default:
-        return <ExclamationTriangleIcon className="h-4 w-4 text-gray-500" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "open":
-        return "bg-red-100 text-red-700";
-      case "investigating":
-        return "bg-yellow-100 text-yellow-700";
-      case "resolved":
-        return "bg-green-100 text-green-700";
-      case "closed":
-        return "bg-gray-100 text-gray-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
+  }, [incidents, searchTerm]);
 
   const deleteIncident = async (incidentId: string) => {
     if (window.confirm("Are you sure you want to delete this incident?")) {
-      try {
-        // Replace with actual API call
-        setIncidents(incidents.filter((i) => i._id !== incidentId));
-      } catch (error) {
-        console.error("Failed to delete incident:", error);
-      }
+      setIncidents(incidents.filter((i) => i._id !== incidentId));
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* User Onboarding & Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Incidents</h1>
-          <p className="text-gray-600">
-            Manage and track your assigned incidents
+          <h1 className="text-3xl font-extrabold text-blue-800 mb-2">
+            Your Incident Reports
+          </h1>
+          <p className="text-gray-700 text-base">
+            Track issues you've reported. Get updates from admins and see status
+            changes here.
           </p>
+          <div className="mt-2 bg-blue-50 border-l-4 border-blue-400 p-3 rounded text-blue-700 text-sm">
+            <strong>Tip:</strong> You can report a new issue anytime. Admins
+            will review and update the status for you.
+          </div>
         </div>
         <Link
-          to="/incidents/new"
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors inline-flex items-center space-x-2"
+          to="/user/incidents/new"
+          className="bg-blue-600 text-white px-5 py-2 rounded-lg text-base font-semibold hover:bg-blue-700 transition-colors shadow"
         >
-          <PlusIcon className="h-4 w-4" />
-          <span>Report Incident</span>
+          + Report New Incident
         </Link>
       </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white p-6 rounded-lg shadow border">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search incidents..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* Filter Toggle */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="inline-flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <FunnelIcon className="h-4 w-4" />
-            <span>Filters</span>
-          </button>
-        </div>
-
-        {/* Filters */}
-        {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  aria-label="Filter by status"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="open">Open</option>
-                  <option value="investigating">Investigating</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Severity
-                </label>
-                <select
-                  value={severityFilter}
-                  onChange={(e) => setSeverityFilter(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  aria-label="Filter by severity"
-                >
-                  <option value="all">All Severities</option>
-                  <option value="critical">Critical</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sort By
-                </label>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  aria-label="Sort incidents by"
-                >
-                  <option value="createdAt">Created Date</option>
-                  <option value="updatedAt">Updated Date</option>
-                  <option value="title">Title</option>
-                  <option value="severity">Severity</option>
-                  <option value="status">Status</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Order
-                </label>
-                <select
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
-                  aria-label="Sort order"
-                >
-                  <option value="desc">Newest First</option>
-                  <option value="asc">Oldest First</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* Simple Search */}
+      <div className="mb-6">
+        <input
+          type="text"
+          placeholder="Search your reported incidents..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full max-w-lg px-4 py-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent shadow-sm"
+        />
       </div>
 
-      {/* Incidents List */}
-      <div className="bg-white rounded-lg shadow border">
+      {/* User Incidents List - Minimal Card Layout */}
+      <div className="space-y-6">
         {filteredIncidents.length === 0 ? (
           <div className="p-12 text-center">
-            <ExclamationTriangleIcon className="h-12 w-12 mx-auto text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No incidents found
+            <ExclamationTriangleIcon className="h-12 w-12 mx-auto text-blue-200 mb-4" />
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              No incidents reported yet
             </h3>
             <p className="text-gray-600 mb-4">
-              {incidents.length === 0
-                ? "You haven't reported any incidents yet."
-                : "No incidents match your current filters."}
+              Start by reporting your first issue. You'll see updates here as
+              admins respond.
             </p>
             <Link
-              to="/incidents/new"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors inline-flex items-center space-x-2"
+              to="/user/incidents/new"
+              className="bg-blue-600 text-white px-5 py-2 rounded-lg text-base font-semibold hover:bg-blue-700 transition-colors shadow"
             >
-              <PlusIcon className="h-4 w-4" />
-              <span>Report First Incident</span>
+              + Report First Incident
             </Link>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filteredIncidents.map((incident) => (
               <div
                 key={incident._id}
-                className="p-6 hover:bg-gray-50 transition-colors"
+                className="bg-white border border-blue-100 rounded-xl p-6 shadow-sm flex flex-col gap-2"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3">
-                      {getStatusIcon(incident.status)}
-                      <div className="flex-1">
-                        <h3 className="text-lg font-medium text-gray-900 truncate">
-                          {incident.title}
-                        </h3>
-                        <p className="text-sm text-gray-600 mt-1 truncate">
-                          {incident.description}
-                        </p>
-                        <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                          <span>{incident.service}</span>
-                          <span>•</span>
-                          <span>
-                            Created{" "}
-                            {new Date(incident.createdAt).toLocaleDateString()}
-                          </span>
-                          {incident.sla?.breached && (
-                            <>
-                              <span>•</span>
-                              <span className="text-red-600 font-medium">
-                                SLA Breached
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-4 ml-4">
-                    {/* Bot Analysis Indicator */}
-                    {incident.botAnalysis && (
-                      <div className="flex items-center space-x-1 text-sm text-blue-600">
-                        <ChatBubbleLeftIcon className="h-4 w-4" />
-                        <span>
-                          {Math.round(incident.botAnalysis.confidence * 100)}%
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Severity Badge */}
-                    <span
-                      className={`px-3 py-1 text-xs font-medium rounded-full border ${getSeverityColor(
-                        incident.severity
-                      )}`}
+                <h3 className="text-lg font-bold text-blue-900 mb-1">
+                  {incident.title}
+                </h3>
+                <p className="text-gray-700 mb-1">{incident.description}</p>
+                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                  <span className="bg-blue-50 px-2 py-1 rounded">
+                    Service: {incident.service}
+                  </span>
+                  <span>•</span>
+                  <span>
+                    Reported:{" "}
+                    {new Date(incident.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-auto">
+                  <Link
+                    to={`/user/incidents/${incident._id}`}
+                    className="text-blue-600 hover:underline text-sm font-medium"
+                  >
+                    View Details
+                  </Link>
+                  {incident.reporter === "current-user" && (
+                    <button
+                      onClick={() => deleteIncident(incident._id)}
+                      className="text-red-500 hover:underline text-sm font-medium ml-2"
                     >
-                      {incident.severity}
-                    </span>
-
-                    {/* Status Badge */}
-                    <span
-                      className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                        incident.status
-                      )}`}
-                    >
-                      {incident.status}
-                    </span>
-
-                    {/* Actions */}
-                    <div className="flex items-center space-x-2">
-                      <Link
-                        to={`/incidents/${incident._id}`}
-                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                        title="View incident"
-                      >
-                        <EyeIcon className="h-4 w-4" />
-                      </Link>
-                      <Link
-                        to={`/incidents/${incident._id}/edit`}
-                        className="p-2 text-gray-400 hover:text-green-600 transition-colors"
-                        title="Edit incident"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </Link>
-                      {incident.reporter === "current-user" && (
-                        <button
-                          onClick={() => deleteIncident(incident._id)}
-                          className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Delete incident"
-                        >
-                          <TrashIcon className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -482,8 +185,9 @@ function MyIncidents() {
 
       {/* Results Summary */}
       {filteredIncidents.length > 0 && (
-        <div className="text-sm text-gray-600 text-center">
-          Showing {filteredIncidents.length} of {incidents.length} incidents
+        <div className="text-sm text-blue-700 text-center mt-8">
+          Showing {filteredIncidents.length} of {incidents.length} reported
+          incidents
         </div>
       )}
     </div>
@@ -491,3 +195,4 @@ function MyIncidents() {
 }
 
 export default MyIncidents;
+// ...existing code...
